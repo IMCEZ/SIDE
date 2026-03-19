@@ -1,0 +1,152 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ===== 主题：午夜（默认）===== */
+[data-theme="theme-midnight"] {
+  --bg-primary: #0d0d1a;
+  --bg-secondary: #13132a;
+  --bg-tertiary: #1a1a3a;
+  --bg-glass: rgba(255, 255, 255, 0.05);
+  --border-color: rgba(255, 255, 255, 0.08);
+  --text-primary: #e8e8ff;
+  --text-secondary: #9090bb;
+  --text-muted: #5050aa;
+  --accent-primary: #7c6af7;
+  --accent-secondary: #a78bfa;
+  --accent-glow: rgba(124, 106, 247, 0.3);
+  --user-bubble: #2d2b6e;
+  --ai-bubble: #1a1a3a;
+  --scrollbar-thumb: rgba(124, 106, 247, 0.4);
+  --danger: #f87171;
+  --success: #4ade80;
+}
+
+/* ===== 主题：深渊 ===== */
+[data-theme="theme-abyss"] {
+  --bg-primary: #050510;
+  --bg-secondary: #0a0a1f;
+  --bg-tertiary: #0f0f2a;
+  --bg-glass: rgba(6, 182, 212, 0.05);
+  --border-color: rgba(6, 182, 212, 0.1);
+  --text-primary: #e0f7fa;
+  --text-secondary: #80cdd8;
+  --text-muted: #3a7a85;
+  --accent-primary: #06b6d4;
+  --accent-secondary: #22d3ee;
+  --accent-glow: rgba(6, 182, 212, 0.3);
+  --user-bubble: #0c3a42;
+  --ai-bubble: #0a0a1f;
+  --scrollbar-thumb: rgba(6, 182, 212, 0.4);
+  --danger: #f87171;
+  --success: #4ade80;
+}
+
+/* ===== 主题：蔷薇 ===== */
+[data-theme="theme-rose"] {
+  --bg-primary: #130810;
+  --bg-secondary: #1f0d18;
+  --bg-tertiary: #2a1220;
+  --bg-glass: rgba(244, 63, 94, 0.05);
+  --border-color: rgba(244, 63, 94, 0.1);
+  --text-primary: #ffe4ef;
+  --text-secondary: #cc8fa8;
+  --text-muted: #7a3d55;
+  --accent-primary: #f43f5e;
+  --accent-secondary: #fb7185;
+  --accent-glow: rgba(244, 63, 94, 0.3);
+  --user-bubble: #4a1025;
+  --ai-bubble: #1f0d18;
+  --scrollbar-thumb: rgba(244, 63, 94, 0.4);
+  --danger: #f87171;
+  --success: #4ade80;
+}
+
+/* ===== 主题：幽林 ===== */
+[data-theme="theme-forest"] {
+  --bg-primary: #060f0a;
+  --bg-secondary: #0a1a10;
+  --bg-tertiary: #0f2418;
+  --bg-glass: rgba(16, 185, 129, 0.05);
+  --border-color: rgba(16, 185, 129, 0.1);
+  --text-primary: #e0f5ec;
+  --text-secondary: #7abf9e;
+  --text-muted: #2d7a55;
+  --accent-primary: #10b981;
+  --accent-secondary: #34d399;
+  --accent-glow: rgba(16, 185, 129, 0.3);
+  --user-bubble: #0a3322;
+  --ai-bubble: #0a1a10;
+  --scrollbar-thumb: rgba(16, 185, 129, 0.4);
+  --danger: #f87171;
+  --success: #4ade80;
+}
+
+/* ===== 主题：晴空（浅色）===== */
+[data-theme="theme-light"] {
+  --bg-primary: #f8f8ff;
+  --bg-secondary: #efefff;
+  --bg-tertiary: #e5e5ff;
+  --bg-glass: rgba(99, 102, 241, 0.05);
+  --border-color: rgba(99, 102, 241, 0.15);
+  --text-primary: #1a1a3a;
+  --text-secondary: #4a4a7a;
+  --text-muted: #8a8aaa;
+  --accent-primary: #6366f1;
+  --accent-secondary: #818cf8;
+  --accent-glow: rgba(99, 102, 241, 0.2);
+  --user-bubble: #e0e0ff;
+  --ai-bubble: #efefff;
+  --scrollbar-thumb: rgba(99, 102, 241, 0.3);
+  --danger: #ef4444;
+  --success: #22c55e;
+}
+
+/* ===== 全局基础样式 ===== */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}
+
+/* 毛玻璃效果工具类 */
+.glass {
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-color);
+}

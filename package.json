@@ -1,0 +1,16 @@
+{
+  "name": "side",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter server dev\" \"pnpm --filter client dev\"",
+    "build": "pnpm --filter client build && pnpm --filter server build",
+    "start": "pnpm --filter server start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["better-sqlite3", "@swc/core", "esbuild"]
+  }
+}
