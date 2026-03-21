@@ -1,177 +1,334 @@
-<div align="center">
-
 # SIDE
 
-**沉浸式 AI 对话前端**
+SIDE 是一个面向本地使用场景的全栈 AI 对话项目，前端基于 React 18 + Vite，后端基于 Express + TypeScript，数据默认保存在本地 `server/data` 中。仓库采用 pnpm workspace 组织，提供 Windows、Linux 和 Termux 三套启动方式，适合本地开发、打包构建与自托管运行。
 
-兼容 SillyTavern 数据格式 · 现代化界面 · 三端支持
+## 技术栈
 
-</div>
+- 前端：React 18、TypeScript、Vite、Tailwind CSS、TanStack Query、Zustand
+- 后端：Express、TypeScript、sql.js
+- 数据：SQLite 风格本地单文件持久化（`server/data/side.db`）
+- 工程化：pnpm workspace、Vitest、ESLint
 
----
+## 目录结构
 
-## 平台支持
+```text
+SIDE/
+├─ client/                 # Vite + React 前端
+├─ server/                 # Express + TypeScript 后端
+│  ├─ data/                # 运行时数据目录，仅保留 .gitkeep
+│  └─ src/                 # 服务端源码
+├─ scripts/                # Windows / Linux / Termux 启动脚本
+├─ .github/                # GitHub 模板与仓库元数据
+├─ package.json            # 根工作区脚本
+├─ pnpm-workspace.yaml     # workspace 定义
+└─ README.md               # 项目说明
+```
 
-- Windows（双击 `start.bat` 启动）
-- Linux（执行 `bash scripts/start.sh` 启动）
-- Android（Termux + PWA 安装到桌面）
+## 环境要求
+
+- Node.js 18 及以上
+- pnpm 8 及以上
+- 首次运行前建议确认以下命令可用：
+
+```bash
+node -v
+pnpm -v
+```
+
+如果没有安装 pnpm，仓库脚本会优先尝试使用 `corepack`，其次尝试使用 `npm install -g pnpm`。
 
 ## 快速开始
 
 ### 1. 克隆仓库
 
-git clone https://github.com/你的用户名/SIDE.git
+```bash
+git clone <你的仓库地址>
 cd SIDE
+```
 
-### 2. 配置环境变量
+### 2. 安装依赖
 
+```bash
+pnpm install
+```
+
+### 3. 初始化环境变量
+
+首次运行前，将示例文件复制为真实配置：
+
+```bash
 cp server/.env.example server/.env
+```
 
-用任意文本编辑器打开 `server/.env`，将 `JWT_SECRET` 替换为任意一段随机字符串。
+Windows 可直接执行：
 
-### 3. 启动 SIDE
+```powershell
+copy server\.env.example server\.env
+```
 
-**Windows：**
-双击 `start.bat`
+默认配置如下：
 
-**Linux：**
-bash scripts/start.sh
+- `JWT_SECRET`：必须修改为随机字符串
+- `PORT`：后端端口，默认 `3000`
+- `SERVER_HOST`：后端监听地址，默认 `127.0.0.1`
+- `CLIENT_DEV_PORT`：前端开发端口，默认 `5173`
 
-**Android（Termux）：**
-bash scripts/start-termux.sh
+### 4. 开发启动
 
-### 4. 访问
+```bash
+pnpm dev
+```
 
-浏览器打开 http://localhost:5173，首次进入设置登录密码即可使用。
+默认访问地址：
 
----
+- 前端开发环境：`http://127.0.0.1:5173`
+- 后端接口：`http://127.0.0.1:3000`
 
-## 数据存储位置
+## 根目录脚本说明
 
-所有数据均存储在本地：
+根目录 `package.json` 统一提供以下脚本：
 
-| 路径 | 内容 |
-|------|------|
-| `server/data/side.db` | 对话记录、设置（最重要） |
-| `server/data/characters/` | 角色卡头像 |
-| `server/data/worlds/` | 世界书文件 |
-| `server/data/presets/` | 预设文件 |
+```bash
+pnpm dev         # 同时启动 client 与 server 开发模式
+pnpm build       # 构建 client/dist 与 server/dist
+pnpm start       # 启动生产模式 server，自动托管 client/dist
+pnpm test        # 运行 server 测试
+pnpm lint        # 运行 client ESLint
+pnpm typecheck   # 运行 client + server TypeScript 检查
+```
 
-**备份方法**：定期复制 `server/data/` 整个文件夹即可。
+生产模式下，后端会自动静态托管 `client/dist`，因此标准流程是：
 
----
+```bash
+pnpm build
+pnpm start
+```
 
-## 兼容性
+## Windows 启动
 
-SIDE 兼容以下 SillyTavern 格式：
-- 角色卡（PNG 嵌入式 + JSON）
-- 世界书（JSON）
-- 预设（JSON）
+项目提供 [start.bat](file:///c:/Users/24165/Desktop/SIDE/scripts/start.bat) 统一入口。
 
----
+### 开发模式
 
-## 技术栈
+双击 `scripts/start.bat`，或在 PowerShell 中执行：
 
-- 前端：React 18 + TypeScript + Vite + Tailwind CSS + Framer Motion
-- 后端：Node.js + Express + TypeScript
-- 数据库：SQLite（本地单文件）
-- PWA：支持安装到桌面
+```powershell
+.\scripts\start.bat dev
+```
 
-## SIDE 项目说明
+### 构建模式
 
-SIDE 是一个基于 Vite 的前端应用和 Node.js/TypeScript 后端组成的全栈项目，使用 pnpm 作为包管理工具。
+```powershell
+.\scripts\start.bat build
+```
 
----
+### 运行生产模式
 
-## 环境要求
+```powershell
+.\scripts\start.bat start
+```
 
-- **Node.js**: 推荐使用 **18 及以上版本**
-  - 可在 Node.js 官网下载安装包：`https://nodejs.org`
-  - 安装完成后，在终端中运行 `node -v` 确认版本号。
-- **pnpm**: 作为包管理工具
-  - 如果已安装 npm（随 Node.js 一起安装），可以通过以下命令全局安装 pnpm：
-    - `npm install -g pnpm`
-  - 安装完成后，在终端中运行 `pnpm -v` 确认安装成功。
+脚本会自动完成以下事项：
 
----
+- 检查 Node.js
+- 检查 pnpm，并尝试自动安装
+- 首次运行时自动执行 `pnpm install`
+- 自动创建 `server/data`
+- 如果缺少 `server/.env`，自动由 `server/.env.example` 复制生成
 
-## 首次启动步骤
+如需修改端口，可先设置环境变量再执行：
 
-以下步骤均在项目根目录（包含 `client/`、`server/`、`scripts/` 等子目录的 `SIDE/` 目录）执行。
+```powershell
+$env:HOST="0.0.0.0"
+$env:PORT="3001"
+$env:CLIENT_PORT="5174"
+.\scripts\start.bat dev
+```
 
-### 方式一：通过命令行启动
+## Linux 启动
 
-1. **安装依赖**
-   - 在终端中进入项目根目录：
-     - 例如：`cd path/to/SIDE`
-   - 执行：
-     - `pnpm install`
-   - 该命令会在项目根目录创建并安装所有依赖到 `node_modules/`。
+项目提供 [start.sh](file:///c:/Users/24165/Desktop/SIDE/scripts/start.sh) 统一入口。
 
-2. **启动开发环境**
-   - 仍然在项目根目录执行：
-     - `pnpm dev`
-   - 启动成功后，前端通常会运行在 `http://localhost:5173`（如有修改，以实际配置为准）。
+首次使用建议赋予执行权限：
 
-### 方式二：通过 Windows 启动脚本启动
+```bash
+chmod +x scripts/start.sh
+```
 
-1. 确保已经安装好 **Node.js** 和 **pnpm**（见上方环境要求）。
-2. 在 Windows 资源管理器中打开项目根目录 `SIDE/`。
-3. 进入 `scripts/` 子目录。
-4. 双击运行：
-   - `start.bat`
-5. 脚本会自动完成以下操作：
-   - 检查 Node.js 是否安装；
-   - 检查 pnpm 是否安装，必要时尝试通过 `npm install -g pnpm` 安装；
-   - 检查并安装项目依赖（在项目根目录执行 `pnpm install`，若 `node_modules/` 不存在）；
-   - 启动开发环境（等价于在项目根执行 `pnpm dev`）；
-   - 在默认浏览器中打开 `http://localhost:5173`。
+### 开发模式
 
-如果脚本执行过程中出现错误，命令行窗口会停留在错误信息界面，方便你查看和排查问题。
+```bash
+bash scripts/start.sh dev
+```
 
----
+### 构建模式
 
-## 常见问题与排查
+```bash
+bash scripts/start.sh build
+```
 
-### 1. 未安装 Node.js 或版本过低
+### 运行生产模式
 
-- **现象**：
-  - 运行 `start.bat` 时提示未检测到 Node.js；
-  - 或在终端运行 `node -v` 时报错，或显示版本号低于 18。
-- **解决方法**：
-  - 前往 Node.js 官网：`https://nodejs.org` 下载并安装当前 LTS 或 18+ 版本；
-  - 安装完成后，重新打开终端或重新运行 `start.bat`。
+```bash
+bash scripts/start.sh start
+```
 
-### 2. 未安装 pnpm
+如需局域网访问，可使用：
 
-- **现象**：
-  - 在终端中运行 `pnpm -v` 提示命令不存在；
-  - 运行 `start.bat` 时，脚本会尝试通过 `npm install -g pnpm` 安装 pnpm，如安装失败会在窗口中提示错误。
-- **解决方法**：
-  - 确保已安装 npm（随 Node.js 一起安装）；
-  - 在终端中执行：
-    - `npm install -g pnpm`
-  - 安装完成后重新运行：
-    - 命令行方式：`pnpm install`、`pnpm dev`
-    - 或再次双击 `scripts/start.bat`。
+```bash
+HOST=0.0.0.0 PORT=3000 CLIENT_PORT=5173 bash scripts/start.sh dev
+```
 
-### 3. 端口被占用（例如 5173）
+## Termux 启动
 
-- **现象**：
-  - 启动 dev 环境时终端报错，提示端口 `5173` 已被占用；
-  - 或浏览器访问 `http://localhost:5173` 时无法正常打开当前项目。
-- **排查步骤**：
-  - 检查是否已有其他 Vite 或前端项目占用了该端口；
-  - 关闭可能占用端口的其他开发服务（例如其他项目的 `npm run dev` / `pnpm dev` 进程）。
-- **解决方法**：
-  - 关闭占用端口的进程后，重新运行：
-    - `pnpm dev`，或
-    - 双击 `scripts/start.bat`。
-  - 如需修改 Vite 默认端口，可在前端配置中调整端口，并相应更新访问地址。
+项目提供 [start-termux.sh](file:///c:/Users/24165/Desktop/SIDE/scripts/start-termux.sh) 统一入口，目标覆盖开发、构建、运行三种场景。
 
----
+### 环境准备
 
-## 其他说明
+建议先执行：
 
-- 推荐在开发过程中始终在项目根目录执行与依赖、启动相关的命令（如 `pnpm install`、`pnpm dev`），以避免路径混乱。
-- 如果对项目结构或脚本行为有修改，请在更新后同步维护本说明文档，方便其他开发者快速上手。
+```bash
+pkg update -y
+pkg install -y git nodejs-lts
+termux-setup-storage
+```
+
+说明：
+
+- `termux-setup-storage` 用于授权访问共享存储
+- 建议将项目放在 Termux 可稳定访问的目录中，避免直接在受限目录运行
+- 首次运行脚本时，会自动尝试准备 `pnpm`
+
+### 开发模式
+
+```bash
+bash scripts/start-termux.sh dev
+```
+
+默认行为：
+
+- 前端 Vite 监听 `0.0.0.0:5173`
+- 后端监听 `0.0.0.0:3000`
+- 本机浏览器优先访问 `http://127.0.0.1:5173`
+- 若手机与其他设备在同一局域网，可使用 `http://<手机局域网IP>:5173` 访问前端
+
+### 构建模式
+
+```bash
+bash scripts/start-termux.sh build
+```
+
+生成产物：
+
+- `client/dist`
+- `server/dist`
+
+### 运行模式
+
+```bash
+bash scripts/start-termux.sh start
+```
+
+此模式要求已经完成构建。启动后访问：
+
+- 本机浏览器：`http://127.0.0.1:3000`
+- 局域网设备：`http://<手机局域网IP>:3000`
+
+### Termux 注意事项
+
+- 某些 Android 设备会对后台进程做限制，长时间运行服务时可能被系统回收
+- 若端口无法访问，先确认 Termux 没有被系统休眠
+- 若需要外部设备访问，请确保手机和访问设备在同一 Wi‑Fi，并且防火墙或系统策略没有拦截
+- 若你只在手机本机使用，优先使用 `127.0.0.1` 访问，最稳定
+
+## 构建与运行
+
+### 构建
+
+```bash
+pnpm build
+```
+
+构建后：
+
+- 前端静态资源输出到 `client/dist`
+- 后端编译结果输出到 `server/dist`
+
+### 运行生产模式
+
+```bash
+pnpm start
+```
+
+此时后端会托管前端构建产物，因此只需访问一个地址：
+
+- `http://127.0.0.1:3000`
+
+## 数据目录说明
+
+运行时数据位于 `server/data`：
+
+| 路径 | 用途 | 是否入库 |
+| --- | --- | --- |
+| `server/data/.gitkeep` | 保留空目录结构 | 是 |
+| `server/data/side.db` | 本地数据库文件 | 否 |
+| `server/data/characters/` | 角色相关本地文件 | 否 |
+| `server/data/worlds/` | 世界书本地文件 | 否 |
+| `server/data/presets/` | 预设本地文件 | 否 |
+
+这意味着仓库只保留目录骨架，不提交用户数据、导入资源和数据库文件。备份时建议直接复制整个 `server/data/` 目录。
+
+## 仓库整理说明
+
+当前仓库治理遵循以下原则：
+
+- `node_modules/`、构建产物、日志、IDE 缓存不入库
+- `.vs/`、`.vscode/`、便携 Node 目录属于本地环境残留，不应提交
+- `server/data` 只保留 `.gitkeep`，避免把个人数据提交到仓库
+- README、脚本与实际端口、目录、运行链路保持一致
+
+## 常见问题
+
+### 1. 启动时报 JWT_SECRET 未配置
+
+请确认已创建 `server/.env`，并将 `JWT_SECRET` 改成至少 8 位的随机字符串。
+
+### 2. 访问不到页面
+
+开发模式下请先确认两个进程都已启动：
+
+- 前端：`5173`
+- 后端：`3000`
+
+如果你修改了端口，请按新的端口访问。
+
+### 3. 端口被占用
+
+可通过环境变量切换端口，例如：
+
+```bash
+PORT=3001 CLIENT_PORT=5174 bash scripts/start.sh dev
+```
+
+Windows：
+
+```powershell
+$env:PORT="3001"
+$env:CLIENT_PORT="5174"
+.\scripts\start.bat dev
+```
+
+### 4. Termux 可以本机访问但局域网不通
+
+优先检查：
+
+- 是否使用了 `HOST=0.0.0.0`
+- 手机与访问设备是否在同一局域网
+- Android 是否限制了 Termux 后台运行
+- 路由器或系统策略是否拦截目标端口
+
+## 注意事项
+
+- 本项目默认面向本地或可信网络环境运行
+- 不建议把 `server/.env`、数据库文件或导入资源提交到 Git 仓库
+- 如果你修改了启动脚本、端口或目录策略，请同步更新 README，避免文档与仓库事实脱节

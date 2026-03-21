@@ -150,3 +150,31 @@ body {
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-color);
 }
+
+/* DOMPurify 安全 HTML 片段（与 .rich-text-content 配合） */
+.rich-text-content {
+  color: inherit;
+  line-height: inherit;
+  font-size: inherit;
+}
+.rich-text-content img {
+  max-width: 100%;
+  height: auto;
+  vertical-align: middle;
+}
+.rich-text-content a {
+  color: var(--accent-primary);
+  text-decoration: underline;
+}
+.rich-text-content table {
+  border-collapse: collapse;
+  max-width: 100%;
+}
+.rich-text-content pre,
+.rich-text-content code {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.rich-text-content pre {
+  overflow-x: auto;
+}

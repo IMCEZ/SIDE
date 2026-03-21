@@ -8,7 +8,7 @@ interface AuthGuardProps {
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
-  const { isAuthenticated, token, login, logout, initAuth } = useAuthStore()
+  const { isAuthenticated, login, logout, initAuth } = useAuthStore()
   const [checking, setChecking] = useState(true)
 
   useEffect(() => {
@@ -25,12 +25,17 @@ export function AuthGuard({ children }: AuthGuardProps) {
         const res = await fetch('/api/v1/auth/verify', {
           headers: { Authorization: `Bearer ${storedToken}` },
         })
+
         if (res.ok) {
+          login(storedToken)
+        } else if (res.status === 404) {
+          // verify 接口不存在，直接信任本地 token
           login(storedToken)
         } else {
           logout()
         }
-      } catch {
+      } catch (e) {
+        // 网络错误，信任本地 token
         if (storedToken) login(storedToken)
       } finally {
         setChecking(false)
@@ -52,25 +57,47 @@ export function AuthGuard({ children }: AuthGuardProps) {
         }}
       >
         <motion.div
-          animate={{ opacity: [0.3, 1, 0.3] }}
-          transition={{ duration: 2, repeat: Infinity }}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
           style={{
-            fontSize: '2rem',
-            fontWeight: 900,
-            letterSpacing: '0.3em',
-            background:
-              'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '16px',
           }}
         >
-          SIDE
+          <motion.div
+            style={{
+              fontSize: '1.8rem',
+              fontWeight: 900,
+              letterSpacing: '0.3em',
+              background:
+                'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+            }}
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            SIDE
+          </motion.div>
+          <motion.div
+            style={{
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              border: '2px solid var(--border-color)',
+              borderTopColor: 'var(--accent-primary)',
+            }}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          />
         </motion.div>
       </div>
     )
   }
 
-  if (!isAuthenticated || !token) {
+  if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
 

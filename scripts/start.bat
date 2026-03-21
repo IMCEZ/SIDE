@@ -1,110 +1,86 @@
 @echo off
-setlocal enabledelayedexpansion
+setlocal
 
-rem 切换到脚本所在目录的上级目录（项目根目录：SIDE）
-cd /d "%~dp0.."
+set "ROOT_DIR=%~dp0.."
+cd /d "%ROOT_DIR%"
 
-title SIDE - AI Chat Frontend
+set "MODE=%~1"
+if "%MODE%"=="" set "MODE=dev"
+if "%HOST%"=="" set "HOST=0.0.0.0"
+if "%PORT%"=="" set "PORT=3000"
+if "%CLIENT_PORT%"=="" set "CLIENT_PORT=5173"
+
 echo.
-echo  ███████╗██╗██████╗ ███████╗
-echo  ██╔════╝██║██╔══██╗██╔════╝
-echo  ███████╗██║██║  ██║█████╗
-echo  ╚════██║██║██║  ██║██╔══╝
-echo  ███████║██║██████╔╝███████╗
-echo  ╚══════╝╚═╝╚═════╝ ╚══════╝
-echo.
-echo  正在启动 SIDE...
+echo SIDE 启动脚本 (%MODE%)
 echo.
 
-echo  [检查] 正在检测 Node.js...
 where node >nul 2>nul
-if %errorlevel% neq 0 (
-    echo  [错误] 未检测到 Node.js，请先安装 Node.js
-    echo  下载地址：https://nodejs.org
-    echo.
-    pause
-    exit /b 1
+if errorlevel 1 (
+  echo 错误: 未检测到 Node.js，请先安装 Node.js 18+ 后重试。
+  exit /b 1
 )
 
-echo  [检查] 正在检测 pnpm...
 where pnpm >nul 2>nul
-if %errorlevel% neq 0 (
-    echo  [提示] 未检测到 pnpm，将通过 npm 全局安装 pnpm...
-    echo  [执行] npm install -g pnpm
-    npm install -g pnpm
-    if %errorlevel% neq 0 (
-        echo  [错误] 安装 pnpm 失败，请手动执行 "npm install -g pnpm" 后重试。
-        echo.
-        pause
-        exit /b 1
-    )
+if errorlevel 1 (
+  where corepack >nul 2>nul
+  if not errorlevel 1 (
+    echo 未检测到 pnpm，尝试通过 corepack 启用...
+    call corepack enable || exit /b 1
+    call corepack prepare pnpm@latest --activate || exit /b 1
+  ) else (
+    echo 未检测到 pnpm，尝试通过 npm 安装...
+    call npm install -g pnpm || exit /b 1
+  )
 )
 
-echo  [检查] 正在检查依赖（node_modules）...
 if not exist "node_modules" (
-    echo  [提示] 首次运行，正在安装依赖，请稍候...
-    echo  [执行] pnpm install
-    pnpm install
-    if %errorlevel% neq 0 (
-        echo  [错误] 依赖安装失败，请检查上方错误信息。
-        echo.
-        pause
-        exit /b 1
-    )
+  echo 未检测到依赖，正在执行 pnpm install...
+  call pnpm install || exit /b 1
 )
 
 if not exist "server\data" mkdir "server\data"
-
-echo  [启动] 正在启动 SIDE 服务...
-echo  [提示] 将在默认浏览器中打开 http://localhost:5173
-start "" "http://localhost:5173"
-
-echo  [执行] pnpm dev
-call pnpm dev
-if %errorlevel% neq 0 (
-    echo.
-    echo  [错误] SIDE 服务启动失败，请检查上方错误日志。
-)
-
-echo.
-echo  [完成] 脚本执行结束，按任意键退出...
-pause
-@echo off
-title SIDE - AI Chat Frontend
-echo.
-echo  ███████╗██╗██████╗ ███████╗
-echo  ██╔════╝██║██╔══██╗██╔════╝
-echo  ███████╗██║██║  ██║█████╗
-echo  ╚════██║██║██║  ██║██╔══╝
-echo  ███████║██║██████╔╝███████╗
-echo  ╚══════╝╚═╝╚═════╝ ╚══════╝
-echo.
-echo  正在启动 SIDE...
-echo.
-
-where node >nul 2>nul
-if %errorlevel% neq 0 (
-    echo  [错误] 未检测到 Node.js，请先安装 Node.js
-    echo  下载地址：https://nodejs.org
-    pause
+if not exist "server\.env" (
+  if exist "server\.env.example" (
+    copy /y "server\.env.example" "server\.env" >nul
+    echo 已生成 server\.env，请按需修改 JWT_SECRET。
+  ) else (
+    echo 错误: 缺少 server\.env.example，无法初始化环境文件。
     exit /b 1
+  )
 )
 
-where pnpm >nul 2>nul
-if %errorlevel% neq 0 (
-    echo  [提示] 正在安装 pnpm...
-    npm install -g pnpm
-)
+if /i "%MODE%"=="dev" goto run_dev
+if /i "%MODE%"=="build" goto run_build
+if /i "%MODE%"=="start" goto run_start
 
-if not exist "node_modules" (
-    echo  [提示] 首次运行，正在安装依赖，请稍候...
-    pnpm install
-)
+echo 错误: 不支持的模式 %MODE%。可用模式: dev ^| build ^| start
+exit /b 1
 
-if not exist "server\\data" mkdir server\\data
+:run_dev
+echo 开发模式前端: http://%HOST%:%CLIENT_PORT%
+echo 开发模式后端: http://%HOST%:%PORT%
+echo.
+set "SERVER_HOST=%HOST%"
+set "CLIENT_DEV_PORT=%CLIENT_PORT%"
+set "VITE_HOST=%HOST%"
+set "VITE_PORT=%CLIENT_PORT%"
+set "VITE_API_TARGET=http://127.0.0.1:%PORT%"
+call pnpm dev
+exit /b %errorlevel%
 
-echo  [启动] 正在启动 SIDE 服务...
-start "" http://localhost:5173
-pnpm dev
-pause
+:run_build
+echo 开始构建 client 与 server...
+echo.
+call pnpm build
+if errorlevel 1 exit /b %errorlevel%
+echo.
+echo 构建完成。client\dist 为前端产物，server\dist 为后端产物。
+exit /b 0
 
+:run_start
+echo 生产模式访问地址: http://%HOST%:%PORT%
+echo.
+set "SERVER_HOST=%HOST%"
+set "NODE_ENV=production"
+call pnpm start
+exit /b %errorlevel%

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useForm } from 'react-hook-form'
-import { Eye, EyeOff, Lock } from 'lucide-react'
+import { Eye, EyeOff, Lock, Sparkles, Shield } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 
 interface FormData {
@@ -19,13 +19,13 @@ interface Particle {
   delay: number
 }
 
-const particles: Particle[] = Array.from({ length: 12 }, (_, i) => ({
+const particles: Particle[] = Array.from({ length: 15 }, (_, i) => ({
   id: i,
   x: Math.random() * 100,
   y: Math.random() * 100,
-  size: Math.random() * 60 + 20,
-  duration: Math.random() * 10 + 15,
-  delay: Math.random() * 5,
+  size: Math.random() * 80 + 30,
+  duration: Math.random() * 15 + 20,
+  delay: Math.random() * 8,
 }))
 
 export default function LoginPage() {
@@ -49,7 +49,7 @@ export default function LoginPage() {
     fetch('/api/v1/auth/status')
       .then((res) => res.json())
       .then((data) => setHasUser(data.hasUser))
-      .catch(() => setHasUser(false))
+      .catch(() => setHasUser(true))
   }, [])
 
   const triggerShake = () => {
@@ -86,7 +86,7 @@ export default function LoginPage() {
         const res = await fetch('/api/v1/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: data.password }),
+          body: JSON.stringify({ username: 'admin', password: data.password }),
         })
         const json = await res.json()
         if (!res.ok) {
@@ -118,13 +118,15 @@ export default function LoginPage() {
         }}
       >
         <motion.div
-          animate={{ opacity: [0.3, 1, 0.3] }}
+          animate={{ opacity: [0.3, 1, 0.3], scale: [0.95, 1, 0.95] }}
           transition={{ duration: 2, repeat: Infinity }}
           style={{
             fontSize: '1.5rem',
             fontWeight: 900,
             letterSpacing: '0.3em',
-            color: 'var(--accent-primary)',
+            background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
           }}
         >
           SIDE
@@ -146,6 +148,20 @@ export default function LoginPage() {
         position: 'relative',
       }}
     >
+      {/* 背景网格 */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          backgroundImage: `
+            linear-gradient(rgba(124,106,247,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(124,106,247,0.03) 1px, transparent 1px)
+          `,
+          backgroundSize: '50px 50px',
+          pointerEvents: 'none',
+        }}
+      />
+
       {/* 背景粒子 */}
       {particles.map((p) => (
         <motion.div
@@ -157,14 +173,15 @@ export default function LoginPage() {
             width: p.size,
             height: p.size,
             borderRadius: '50%',
-            background: 'var(--accent-glow)',
-            filter: 'blur(20px)',
+            background: 'radial-gradient(circle, var(--accent-glow) 0%, transparent 70%)',
+            filter: 'blur(30px)',
             pointerEvents: 'none',
           }}
           animate={{
-            x: [0, 30, -20, 0],
-            y: [0, -40, 20, 0],
-            opacity: [0.3, 0.6, 0.2, 0.3],
+            x: [0, 50, -30, 0],
+            y: [0, -60, 30, 0],
+            opacity: [0.2, 0.5, 0.15, 0.2],
+            scale: [1, 1.2, 0.9, 1],
           }}
           transition={{
             duration: p.duration,
@@ -175,25 +192,55 @@ export default function LoginPage() {
         />
       ))}
 
+      {/* 装饰光环 */}
+      <motion.div
+        style={{
+          position: 'absolute',
+          width: '600px',
+          height: '600px',
+          borderRadius: '50%',
+          border: '1px solid rgba(124,106,247,0.1)',
+          pointerEvents: 'none',
+        }}
+        animate={{ rotate: 360 }}
+        transition={{ duration: 60, repeat: Infinity, ease: 'linear' }}
+      />
+      <motion.div
+        style={{
+          position: 'absolute',
+          width: '400px',
+          height: '400px',
+          borderRadius: '50%',
+          border: '1px solid rgba(124,106,247,0.08)',
+          pointerEvents: 'none',
+        }}
+        animate={{ rotate: -360 }}
+        transition={{ duration: 45, repeat: Infinity, ease: 'linear' }}
+      />
+
       {/* 登录卡片 */}
       <motion.div
         animate={shake ? { x: [-10, 10, -8, 8, -5, 5, 0] } : { x: 0 }}
         transition={{ duration: 0.5 }}
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+        whileInView={{ opacity: 1, y: 0, scale: 1 }}
         style={{
           position: 'relative',
           zIndex: 10,
           width: '100%',
-          maxWidth: '400px',
-          margin: '0 16px',
+          maxWidth: '420px',
+          margin: '0 20px',
           background: 'var(--bg-glass)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
+          backdropFilter: 'blur(24px)',
+          WebkitBackdropFilter: 'blur(24px)',
           border: '1px solid var(--border-color)',
-          borderRadius: '20px',
-          padding: '40px 32px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
+          borderRadius: '24px',
+          padding: '44px 36px',
+          boxShadow: `
+            0 8px 32px rgba(0,0,0,0.4),
+            0 0 0 1px rgba(124,106,247,0.1),
+            inset 0 1px 0 rgba(255,255,255,0.05)
+          `,
         }}
       >
         {/* Logo */}
@@ -203,17 +250,36 @@ export default function LoginPage() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.1 }}
             style={{
-              fontSize: '3rem',
-              fontWeight: 900,
-              letterSpacing: '0.4em',
-              background:
-                'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              display: 'inline-block',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '12px',
+              marginBottom: '8px',
             }}
           >
-            SIDE
+            <motion.div
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 4, repeat: Infinity, repeatDelay: 3 }}
+            >
+              <Sparkles 
+                size={32} 
+                style={{ 
+                  color: 'var(--accent-primary)',
+                  filter: 'drop-shadow(0 0 12px var(--accent-glow))',
+                }} 
+              />
+            </motion.div>
+            <span
+              style={{
+                fontSize: '2.8rem',
+                fontWeight: 900,
+                letterSpacing: '0.25em',
+                background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              SIDE
+            </span>
           </motion.div>
         </div>
 
@@ -226,35 +292,63 @@ export default function LoginPage() {
             color: 'var(--text-muted)',
             fontSize: '0.85rem',
             marginBottom: '32px',
-            letterSpacing: '0.1em',
+            letterSpacing: '0.15em',
           }}
         >
           沉浸式 AI 对话体验
         </motion.p>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
+        {/* 提示信息 */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
           style={{
-            textAlign: 'center',
-            color: 'var(--text-secondary)',
-            fontSize: '0.9rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '14px 16px',
+            background: 'rgba(124,106,247,0.08)',
+            borderRadius: '12px',
             marginBottom: '24px',
+            border: '1px solid rgba(124,106,247,0.15)',
           }}
         >
-          {hasUser ? '请输入密码' : '首次使用，请设置登录密码'}
-        </motion.p>
+          <Shield size={18} style={{ color: 'var(--accent-primary)', flexShrink: 0 }} />
+          <div>
+            <p
+              style={{
+                color: 'var(--text-secondary)',
+                fontSize: '0.85rem',
+                lineHeight: 1.5,
+              }}
+            >
+              {hasUser ? (
+                <>
+                  默认密码为 <strong style={{ color: 'var(--accent-primary)' }}>123456</strong>，
+                  您可以在设置中修改
+                </>
+              ) : (
+                '首次使用，请设置登录密码'
+              )}
+            </p>
+          </div>
+        </motion.div>
 
         <form onSubmit={handleSubmit(onSubmit)}>
           {/* 密码输入框 */}
-          <div style={{ marginBottom: '16px' }}>
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
+            style={{ marginBottom: '16px' }}
+          >
             <div style={{ position: 'relative' }}>
               <Lock
-                size={16}
+                size={18}
                 style={{
                   position: 'absolute',
-                  left: '14px',
+                  left: '16px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   color: 'var(--text-muted)',
@@ -262,23 +356,23 @@ export default function LoginPage() {
               />
               <input
                 type={showPassword ? 'text' : 'password'}
-                placeholder="密码"
+                placeholder={hasUser ? '请输入密码 (默认: 123456)' : '设置密码'}
                 {...register('password', {
                   required: '请输入密码',
                   minLength: { value: 6, message: '密码至少 6 位' },
                 })}
                 style={{
                   width: '100%',
-                  padding: '12px 44px',
+                  padding: '14px 48px',
                   background: 'var(--bg-secondary)',
-                  border: `1px solid ${
+                  border: `2px solid ${
                     errors.password ? 'var(--danger)' : 'var(--border-color)'
                   }`,
-                  borderRadius: '10px',
+                  borderRadius: '12px',
                   color: 'var(--text-primary)',
                   fontSize: '0.95rem',
                   outline: 'none',
-                  transition: 'border-color 0.2s',
+                  transition: 'all 0.2s',
                 }}
               />
               <button
@@ -286,7 +380,7 @@ export default function LoginPage() {
                 onClick={() => setShowPassword(!showPassword)}
                 style={{
                   position: 'absolute',
-                  right: '12px',
+                  right: '14px',
                   top: '50%',
                   transform: 'translateY(-50%)',
                   background: 'none',
@@ -294,9 +388,10 @@ export default function LoginPage() {
                   cursor: 'pointer',
                   color: 'var(--text-muted)',
                   padding: '4px',
+                  transition: 'color 0.2s',
                 }}
               >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
             {errors.password && (
@@ -304,13 +399,14 @@ export default function LoginPage() {
                 style={{
                   color: 'var(--danger)',
                   fontSize: '0.8rem',
-                  marginTop: '4px',
+                  marginTop: '6px',
+                  marginLeft: '4px',
                 }}
               >
                 {errors.password.message}
               </p>
             )}
-          </div>
+          </motion.div>
 
           {/* 确认密码（仅首次设置时显示）*/}
           <AnimatePresence>
@@ -323,10 +419,10 @@ export default function LoginPage() {
               >
                 <div style={{ position: 'relative' }}>
                   <Lock
-                    size={16}
+                    size={18}
                     style={{
                       position: 'absolute',
-                      left: '14px',
+                      left: '16px',
                       top: '50%',
                       transform: 'translateY(-50%)',
                       color: 'var(--text-muted)',
@@ -341,18 +437,18 @@ export default function LoginPage() {
                     })}
                     style={{
                       width: '100%',
-                      padding: '12px 44px',
+                      padding: '14px 48px',
                       background: 'var(--bg-secondary)',
-                      border: `1px solid ${
+                      border: `2px solid ${
                         errors.confirmPassword
                           ? 'var(--danger)'
                           : 'var(--border-color)'
                       }`,
-                      borderRadius: '10px',
+                      borderRadius: '12px',
                       color: 'var(--text-primary)',
                       fontSize: '0.95rem',
                       outline: 'none',
-                      transition: 'border-color 0.2s',
+                      transition: 'all 0.2s',
                     }}
                   />
                   <button
@@ -360,7 +456,7 @@ export default function LoginPage() {
                     onClick={() => setShowConfirm(!showConfirm)}
                     style={{
                       position: 'absolute',
-                      right: '12px',
+                      right: '14px',
                       top: '50%',
                       transform: 'translateY(-50%)',
                       background: 'none',
@@ -368,9 +464,10 @@ export default function LoginPage() {
                       cursor: 'pointer',
                       color: 'var(--text-muted)',
                       padding: '4px',
+                      transition: 'color 0.2s',
                     }}
                   >
-                    {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                    {showConfirm ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
                 {errors.confirmPassword && (
@@ -378,7 +475,8 @@ export default function LoginPage() {
                     style={{
                       color: 'var(--danger)',
                       fontSize: '0.8rem',
-                      marginTop: '4px',
+                      marginTop: '6px',
+                      marginLeft: '4px',
                     }}
                   >
                     {errors.confirmPassword.message}
@@ -391,19 +489,28 @@ export default function LoginPage() {
           {/* 错误提示 */}
           <AnimatePresence>
             {error && (
-              <motion.p
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
                 style={{
-                  color: 'var(--danger)',
-                  fontSize: '0.85rem',
-                  marginBottom: '16px',
-                  textAlign: 'center',
+                  padding: '12px 16px',
+                  background: 'rgba(239,68,68,0.1)',
+                  border: '1px solid rgba(239,68,68,0.2)',
+                  borderRadius: '10px',
+                  marginBottom: '20px',
                 }}
               >
-                {error}
-              </motion.p>
+                <p
+                  style={{
+                    color: 'var(--danger)',
+                    fontSize: '0.85rem',
+                    textAlign: 'center',
+                  }}
+                >
+                  {error}
+                </p>
+              </motion.div>
             )}
           </AnimatePresence>
 
@@ -411,24 +518,29 @@ export default function LoginPage() {
           <motion.button
             type="submit"
             disabled={loading}
-            whileTap={{ scale: 0.97 }}
+            whileHover={{ scale: 1.02, boxShadow: '0 8px 25px rgba(124,106,247,0.4)' }}
+            whileTap={{ scale: 0.98 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
             style={{
               width: '100%',
-              padding: '13px',
+              padding: '15px',
               background: loading
                 ? 'var(--bg-tertiary)'
                 : 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
               border: 'none',
-              borderRadius: '10px',
+              borderRadius: '12px',
               color: '#fff',
               fontWeight: 700,
-              fontSize: '0.95rem',
+              fontSize: '1rem',
               cursor: loading ? 'not-allowed' : 'pointer',
-              transition: 'opacity 0.2s',
+              transition: 'all 0.3s',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px',
+              gap: '10px',
+              boxShadow: loading ? 'none' : '0 4px 15px rgba(124,106,247,0.3)',
             }}
           >
             {loading ? (
@@ -441,8 +553,8 @@ export default function LoginPage() {
                     ease: 'linear',
                   }}
                   style={{
-                    width: '16px',
-                    height: '16px',
+                    width: '18px',
+                    height: '18px',
                     border: '2px solid rgba(255,255,255,0.3)',
                     borderTopColor: '#fff',
                     borderRadius: '50%',
@@ -457,6 +569,34 @@ export default function LoginPage() {
             )}
           </motion.button>
         </form>
+
+        {/* 底部装饰 */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.6 }}
+          style={{
+            marginTop: '28px',
+            textAlign: 'center',
+          }}
+        >
+          <div
+            style={{
+              height: '1px',
+              background: 'linear-gradient(90deg, transparent, var(--border-color), transparent)',
+              marginBottom: '16px',
+            }}
+          />
+          <p
+            style={{
+              color: 'var(--text-muted)',
+              fontSize: '0.75rem',
+              letterSpacing: '0.05em',
+            }}
+          >
+            安全 · 私密 · 本地优先
+          </p>
+        </motion.div>
       </motion.div>
     </div>
   )

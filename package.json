@@ -4,8 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "concurrently \"pnpm --filter server dev\" \"pnpm --filter client dev\"",
+    "dev:server": "pnpm --filter server dev",
+    "dev:server:once": "pnpm --filter server dev:once",
     "build": "pnpm --filter client build && pnpm --filter server build",
-    "start": "pnpm --filter server start"
+    "start": "pnpm --filter server start",
+    "test": "pnpm --filter server test",
+    "lint": "pnpm --filter client lint",
+    "typecheck": "pnpm --filter client typecheck && pnpm --filter server typecheck"
   },
   "devDependencies": {
     "concurrently": "^8.2.0"

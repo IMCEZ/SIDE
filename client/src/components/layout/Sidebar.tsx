@@ -1,23 +1,24 @@
-import { motion } from 'framer-motion';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Users, BookOpen, Sliders, Settings } from 'lucide-react';
-import { THEMES } from '../../themes/themeConfig';
-import { useThemeStore } from '../../stores/themeStore';
-import { useState } from 'react';
+import { motion } from 'framer-motion'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Users, BookOpen, Sliders, Settings, FileText } from 'lucide-react'
+import { THEMES } from '@/themes/themeConfig'
+import { useThemeStore } from '@/stores/themeStore'
+import { useState } from 'react'
 
 const navItems = [
   { icon: Users, label: '角色', path: '/characters' },
   { icon: BookOpen, label: '世界书', path: '/worlds' },
   { icon: Sliders, label: '预设', path: '/presets' },
-  { icon: Settings, label: '设置', path: '/settings' }
-] as const;
+  { icon: FileText, label: 'Regex', path: '/regex' },
+  { icon: Settings, label: '设置', path: '/settings' },
+] as const
 
-export const Sidebar = () => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [themeOpen, setThemeOpen] = useState(false);
-  const currentTheme = useThemeStore((s) => s.currentTheme);
-  const setTheme = useThemeStore((s) => s.setTheme);
+export function Sidebar() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  const [themeOpen, setThemeOpen] = useState(false)
+  const currentTheme = useThemeStore((s) => s.currentTheme)
+  const setTheme = useThemeStore((s) => s.setTheme)
 
   return (
     <motion.aside
@@ -27,7 +28,7 @@ export const Sidebar = () => {
       className="hidden md:flex flex-col justify-between h-full w-64 border-r"
       style={{
         background: 'var(--bg-secondary)',
-        borderColor: 'var(--border-color)'
+        borderColor: 'var(--border-color)',
       }}
     >
       <div className="px-4 pt-4 pb-2">
@@ -42,8 +43,8 @@ export const Sidebar = () => {
 
         <nav className="space-y-1">
           {navItems.map((item) => {
-            const Icon = item.icon;
-            const active = location.pathname.startsWith(item.path);
+            const Icon = item.icon
+            const active = location.pathname.startsWith(item.path)
             return (
               <motion.button
                 key={item.path}
@@ -52,7 +53,7 @@ export const Sidebar = () => {
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm relative group"
                 style={{
                   color: active ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                  background: active ? 'rgba(124,106,247,0.12)' : 'transparent'
+                  background: active ? 'rgba(124,106,247,0.12)' : 'transparent',
                 }}
               >
                 {active && (
@@ -67,7 +68,7 @@ export const Sidebar = () => {
                   <span>{item.label}</span>
                 </div>
               </motion.button>
-            );
+            )
           })}
         </nav>
       </div>
@@ -81,16 +82,14 @@ export const Sidebar = () => {
             style={{
               background: 'var(--bg-tertiary)',
               color: 'var(--text-secondary)',
-              border: '1px solid var(--border-color)'
+              border: '1px solid var(--border-color)',
             }}
           >
             <span>主题</span>
             <div className="flex items-center gap-1.5">
               <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
-                {
-                  THEMES.find((t) => t.id === currentTheme)?.name ??
-                  THEMES.find((t) => t.id === 'theme-midnight')?.name
-                }
+                {THEMES.find((t) => t.id === currentTheme)?.name ??
+                  THEMES.find((t) => t.id === 'theme-midnight')?.name}
               </span>
               <span
                 className="w-3 h-3 rounded-full"
@@ -98,7 +97,7 @@ export const Sidebar = () => {
                   background:
                     THEMES.find((t) => t.id === currentTheme)?.preview ??
                     THEMES[0]?.preview ??
-                    'var(--accent-primary)'
+                    '#7c6af7',
                 }}
               />
             </div>
@@ -108,58 +107,36 @@ export const Sidebar = () => {
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
-              className="absolute bottom-11 left-0 right-0 rounded-2xl mt-2 p-3 z-20"
+              className="absolute bottom-full left-0 right-0 mb-2 rounded-xl border overflow-hidden"
               style={{
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-color)',
-                boxShadow: '0 18px 40px rgba(0,0,0,0.45)'
+                background: 'var(--bg-tertiary)',
+                borderColor: 'var(--border-color)',
               }}
             >
-              <div className="grid grid-cols-5 gap-3">
-                {THEMES.map((theme) => (
-                  <button
-                    key={theme.id}
-                    type="button"
-                    onClick={async () => {
-                      await setTheme(theme.id);
-                      setThemeOpen(false);
-                    }}
-                    className="flex flex-col items-center gap-1"
-                  >
-                    <div className="relative">
-                      <div
-                        className="w-7 h-7 rounded-full border"
-                        style={{
-                          background: theme.preview,
-                          borderColor:
-                            theme.id === currentTheme ? 'var(--accent-secondary)' : 'transparent',
-                          boxShadow:
-                            theme.id === currentTheme
-                              ? '0 0 0 2px rgba(148,163,184,0.5)'
-                              : 'none'
-                        }}
-                      />
-                    </div>
-                    <span
-                      className="text-[10px]"
-                      style={{
-                        color:
-                          theme.id === currentTheme
-                            ? 'var(--accent-primary)'
-                            : 'var(--text-muted)'
-                      }}
-                    >
-                      {theme.name}
-                    </span>
-                  </button>
-                ))}
-              </div>
+              {THEMES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => {
+                    setTheme(t.id)
+                    setThemeOpen(false)
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-[var(--accent-primary)]/10 transition-colors"
+                  style={{
+                    color: currentTheme === t.id ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  }}
+                >
+                  <span
+                    className="w-3 h-3 rounded-full"
+                    style={{ background: t.preview }}
+                  />
+                  <span>{t.name}</span>
+                </button>
+              ))}
             </motion.div>
           )}
         </div>
       </div>
     </motion.aside>
-  );
-};
-
+  )
+}

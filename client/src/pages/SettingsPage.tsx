@@ -1,587 +1,525 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Palette, Key, Info, Plus, Check, Trash2, Zap } from 'lucide-react'
+import {
+  Check,
+  Loader,
+  Lock,
+  Search,
+  Server,
+  Zap,
+} from 'lucide-react'
 
-const THEMES = [
-  { id: 'theme-midnight', name: '午夜', preview: '#7c6af7' },
-  { id: 'theme-abyss', name: '深渊', preview: '#06b6d4' },
-  { id: 'theme-rose', name: '蔷薇', preview: '#f43f5e' },
-  { id: 'theme-forest', name: '幽林', preview: '#10b981' },
-  { id: 'theme-light', name: '晴空', preview: '#6366f1' },
-]
-
-const PROVIDERS = [
-  'openai',
-  'claude',
-  'gemini',
-  'ollama',
-  'openrouter',
-  'custom',
-]
-
-interface ApiConfig {
-  id: number
-  name: string
-  provider: string
-  endpoint: string
-  model: string
-  is_active: number
+type ActionMessage = {
+  type: 'success' | 'error'
+  text: string
 }
 
-type Tab = 'theme' | 'api' | 'security' | 'about'
+type ProviderInfo = {
+  id: string
+  name: string
+  provider: string
+  defaultEndpoint: string
+  requiresApiKey: boolean
+  description: string
+}
+
+type ApiProfileResponse = {
+  id: number
+  provider: string
+  baseUrl: string
+  apiKeyMasked: string
+  hasApiKey: boolean
+  defaultModel: string
+  enabled: boolean
+  createdAt: number
+}
+
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem('side_token')
+  return { Authorization: `Bearer ${token}` }
+}
+
+function parseErrorMessage(data: any, fallback: string): string {
+  if (typeof data?.error === 'string' && data.error.trim()) return data.error
+  if (typeof data?.message === 'string' && data.message.trim()) return data.message
+  return fallback
+}
 
 export default function SettingsPage() {
-  const [tab, setTab] = useState<Tab>('theme')
-  const [currentTheme, setCurrentTheme] = useState(
-    localStorage.getItem('side_theme') || 'theme-midnight',
-  )
-  const [configs, setConfigs] = useState<ApiConfig[]>([])
-  const [showAddApi, setShowAddApi] = useState(false)
-  const [apiForm, setApiForm] = useState({
-    name: '',
-    provider: 'openai',
-    endpoint: '',
-    apiKey: '',
-    model: '',
-  })
-  const [oldPwd, setOldPwd] = useState('')
-  const [newPwd, setNewPwd] = useState('')
-  const [confirmPwd, setConfirmPwd] = useState('')
-  const [pwdMsg, setPwdMsg] = useState('')
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [passwordMsg, setPasswordMsg] = useState<ActionMessage | null>(null)
 
-  const token = localStorage.getItem('side_token')
-  const headers: HeadersInit = {
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    'Content-Type': 'application/json',
-  }
+  const [providers, setProviders] = useState<ProviderInfo[]>([])
+  const [loadingProfile, setLoadingProfile] = useState(false)
 
-  const fetchConfigs = async () => {
-    const res = await fetch('/api/v1/api-configs', { headers })
-    if (res.ok) setConfigs(await res.json())
+  const [selectedProviderId, setSelectedProviderId] = useState('')
+  const [formProvider, setFormProvider] = useState('openai-compatible')
+  const [formBaseUrl, setFormBaseUrl] = useState('')
+  const [formApiKey, setFormApiKey] = useState('')
+  const [formDefaultModel, setFormDefaultModel] = useState('')
+  const [formEnabled, setFormEnabled] = useState(true)
+  const [hasStoredApiKey, setHasStoredApiKey] = useState(false)
+
+  const [saveLoading, setSaveLoading] = useState(false)
+  const [saveMsg, setSaveMsg] = useState<ActionMessage | null>(null)
+
+  const [testLoading, setTestLoading] = useState(false)
+  const [testMsg, setTestMsg] = useState<ActionMessage | null>(null)
+
+  const [modelsLoading, setModelsLoading] = useState(false)
+  const [modelsMsg, setModelsMsg] = useState<ActionMessage | null>(null)
+  const [modelList, setModelList] = useState<string[]>([])
+  const [showModelDropdown, setShowModelDropdown] = useState(false)
+  const [modelSearchText, setModelSearchText] = useState('')
+
+  const filteredModelList = useMemo(() => {
+    const q = modelSearchText.trim().toLowerCase()
+    if (!q) return modelList
+    return modelList.filter((m) => m.toLowerCase().includes(q))
+  }, [modelList, modelSearchText])
+
+  const fetchProviders = useCallback(async () => {
+    try {
+      const res = await fetch('/api/v1/api-configs/providers', { headers: getAuthHeaders() })
+      if (!res.ok) return
+      const data = (await res.json()) as ProviderInfo[]
+      const openAICompatibleProviders = Array.isArray(data)
+        ? data.filter((p) => p.provider === 'openai-compatible')
+        : []
+      setProviders(openAICompatibleProviders)
+      setSelectedProviderId((prev) => prev || openAICompatibleProviders[0]?.id || '')
+    } catch {
+      return
+    }
+  }, [])
+
+  const fetchCurrentProfile = async () => {
+    setLoadingProfile(true)
+    try {
+      const res = await fetch('/api/v1/settings/api-profile/current', { headers: getAuthHeaders() })
+      if (!res.ok) {
+        setSaveMsg({ type: 'error', text: '加载 API 配置失败' })
+        return
+      }
+
+      const data = (await res.json()) as ApiProfileResponse | null
+      if (!data) {
+        return
+      }
+
+      setFormProvider(data.provider || 'openai-compatible')
+      setFormBaseUrl(data.baseUrl || '')
+      setFormDefaultModel(data.defaultModel || '')
+      setFormEnabled(Boolean(data.enabled))
+      setHasStoredApiKey(Boolean(data.hasApiKey))
+      setFormApiKey('')
+    } catch {
+      setSaveMsg({ type: 'error', text: '加载 API 配置失败' })
+    } finally {
+      setLoadingProfile(false)
+    }
   }
 
   useEffect(() => {
-    fetchConfigs()
-  }, [])
+    fetchProviders()
+    fetchCurrentProfile()
+  }, [fetchProviders])
 
-  const applyTheme = (id: string) => {
-    setCurrentTheme(id)
-    document.documentElement.setAttribute('data-theme', id)
-    localStorage.setItem('side_theme', id)
+  const handleSelectProvider = (p: ProviderInfo) => {
+    setSelectedProviderId(p.id)
+    setFormProvider('openai-compatible')
+    setFormBaseUrl(p.defaultEndpoint || '')
+    setSaveMsg(null)
+    setTestMsg(null)
+    setModelsMsg(null)
   }
 
-  const handleAddApi = async () => {
-    const res = await fetch('/api/v1/api-configs', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(apiForm),
-    })
-    if (res.ok) {
-      setShowAddApi(false)
-      setApiForm({
-        name: '',
-        provider: 'openai',
-        endpoint: '',
-        apiKey: '',
-        model: '',
+  const handleSave = async () => {
+    if (!formBaseUrl.trim()) {
+      setSaveMsg({ type: 'error', text: '请填写 Base URL' })
+      return
+    }
+    if (!formDefaultModel.trim()) {
+      setSaveMsg({ type: 'error', text: '请填写默认模型' })
+      return
+    }
+
+    setSaveLoading(true)
+    setSaveMsg(null)
+    try {
+      const res = await fetch('/api/v1/settings/api-profile/current', {
+        method: 'PUT',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          provider: 'openai-compatible',
+          baseUrl: formBaseUrl.trim(),
+          apiKey: formApiKey.trim(),
+          defaultModel: formDefaultModel.trim(),
+          enabled: formEnabled,
+        }),
       })
-      fetchConfigs()
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        setSaveMsg({ type: 'error', text: parseErrorMessage(data, '保存失败') })
+        return
+      }
+
+      setSaveMsg({ type: 'success', text: '保存成功' })
+      setHasStoredApiKey(Boolean(data?.hasApiKey) || Boolean(formApiKey.trim()))
+      setFormApiKey('')
+    } catch {
+      setSaveMsg({ type: 'error', text: '保存失败，请检查网络连接' })
+    } finally {
+      setSaveLoading(false)
     }
   }
 
-  const handleActivate = async (id: number) => {
-    await fetch(`/api/v1/api-configs/${id}/activate`, {
-      method: 'PUT',
-      headers,
-    })
-    fetchConfigs()
+  const handleTestConnection = async () => {
+    if (!formBaseUrl.trim()) {
+      setTestMsg({ type: 'error', text: '请填写 Base URL' })
+      return
+    }
+
+    setTestLoading(true)
+    setTestMsg(null)
+    try {
+      const res = await fetch('/api/v1/settings/api-profile/current/test', {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          provider: 'openai-compatible',
+          baseUrl: formBaseUrl.trim(),
+          apiKey: formApiKey.trim(),
+        }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        setTestMsg({ type: 'error', text: parseErrorMessage(data, '连接测试失败') })
+        return
+      }
+
+      setTestMsg({ type: 'success', text: parseErrorMessage(data, '连接成功') })
+    } catch {
+      setTestMsg({ type: 'error', text: '连接测试失败，请检查网络连接' })
+    } finally {
+      setTestLoading(false)
+    }
   }
 
-  const handleDeleteApi = async (id: number) => {
-    if (!window.confirm('确认删除该配置？')) return
-    await fetch(`/api/v1/api-configs/${id}`, { method: 'DELETE', headers })
-    fetchConfigs()
+  const handleFetchModelList = async () => {
+    if (!formBaseUrl.trim()) {
+      setModelsMsg({ type: 'error', text: '请填写 Base URL' })
+      return
+    }
+
+    setModelsLoading(true)
+    setModelsMsg(null)
+
+    try {
+      const res = await fetch('/api/v1/settings/api-profile/current/models', {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          provider: 'openai-compatible',
+          baseUrl: formBaseUrl.trim(),
+          apiKey: formApiKey.trim(),
+        }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        setModelsMsg({ type: 'error', text: parseErrorMessage(data, '获取模型列表失败') })
+        return
+      }
+
+      const models = Array.isArray(data?.models)
+        ? data.models.filter((item: unknown): item is string => typeof item === 'string' && item.trim().length > 0)
+        : []
+
+      setModelList(models)
+      setShowModelDropdown(models.length > 0)
+      setModelSearchText(formDefaultModel)
+      setModelsMsg({ type: 'success', text: `获取成功，共 ${models.length} 个模型` })
+    } catch {
+      setModelsMsg({ type: 'error', text: '获取模型列表失败，请检查网络连接' })
+    } finally {
+      setModelsLoading(false)
+    }
   }
 
   const handleChangePwd = async () => {
-    if (newPwd !== confirmPwd) {
-      setPwdMsg('两次密码不一致')
+    if (newPassword !== confirmPassword) {
+      setPasswordMsg({ type: 'error', text: '两次密码不一致' })
       return
     }
-    const res = await fetch('/api/v1/auth/password', {
-      method: 'PUT',
-      headers,
-      body: JSON.stringify({ oldPassword: oldPwd, newPassword: newPwd }),
-    })
-    setPwdMsg(res.ok ? '密码修改成功' : '旧密码错误')
+
+    setPasswordMsg(null)
+    try {
+      const res = await fetch('/api/v1/auth/password', {
+        method: 'PUT',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          oldPassword: currentPassword,
+          newPassword,
+        }),
+      })
+
+      const data = await res.json().catch(() => ({}))
+
+      if (!res.ok) {
+        setPasswordMsg({ type: 'error', text: parseErrorMessage(data, '密码修改失败') })
+        return
+      }
+
+      setPasswordMsg({ type: 'success', text: '密码修改成功' })
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch {
+      setPasswordMsg({ type: 'error', text: '密码修改失败，请检查网络' })
+    }
   }
 
-  const tabs: { key: Tab; label: string; icon: React.ReactNode }[] = [
-    { key: 'theme', label: '主题', icon: <Palette size={16} /> },
-    { key: 'api', label: 'API 配置', icon: <Zap size={16} /> },
-    { key: 'security', label: '安全', icon: <Key size={16} /> },
-    { key: 'about', label: '关于', icon: <Info size={16} /> },
-  ]
+  const showApiKeyOptionalTag = hasStoredApiKey
 
   return (
-    <div style={{ padding: '32px', paddingBottom: '80px', maxWidth: '760px' }}>
-      <h1
-        style={{
-          fontSize: '1.5rem',
-          fontWeight: 700,
-          color: 'var(--text-primary)',
-          marginBottom: '24px',
-        }}
-      >
-        设置
-      </h1>
-
-      {/* Tab 导航 */}
+    <div style={{ padding: '32px', paddingBottom: '80px', maxWidth: '820px' }}>
       <div
         style={{
-          display: 'flex',
-          gap: '8px',
-          marginBottom: '28px',
-          flexWrap: 'wrap',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-color)',
+          borderRadius: '16px',
+          padding: '20px',
+          marginBottom: '18px',
         }}
       >
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
+          <Lock size={18} style={{ color: 'var(--accent-primary)' }} />
+          <h2 style={{ fontSize: '1.05rem', margin: 0, color: 'var(--text-primary)' }}>
+            安全设置
+          </h2>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div>
+            <label style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>当前密码</label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              style={{
+                width: '100%',
+                marginTop: '6px',
+                padding: '10px 12px',
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '10px',
+                color: 'var(--text-primary)',
+                fontSize: '0.9rem',
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>新密码</label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              style={{
+                width: '100%',
+                marginTop: '6px',
+                padding: '10px 12px',
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '10px',
+                color: 'var(--text-primary)',
+                fontSize: '0.9rem',
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+              确认新密码
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              style={{
+                width: '100%',
+                marginTop: '6px',
+                padding: '10px 12px',
+                background: 'var(--bg-tertiary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '10px',
+                color: 'var(--text-primary)',
+                fontSize: '0.9rem',
+                outline: 'none',
+              }}
+            />
+          </div>
+
+          {passwordMsg && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                fontSize: '0.85rem',
+                color: passwordMsg.type === 'success' ? 'var(--success)' : 'var(--danger)',
+              }}
+            >
+              {passwordMsg.text}
+            </motion.div>
+          )}
+
+          <motion.button
+            type="button"
+            onClick={handleChangePwd}
+            whileTap={{ scale: 0.98 }}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 16px',
+              padding: '10px 20px',
               borderRadius: '10px',
               cursor: 'pointer',
-              background:
-                tab === t.key
-                  ? 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))'
-                  : 'var(--bg-secondary)',
-              border: `1px solid ${
-                tab === t.key ? 'transparent' : 'var(--border-color)'
-              }`,
-              color:
-                tab === t.key ? '#fff' : 'var(--text-secondary)',
-              fontWeight: tab === t.key ? 600 : 400,
-              fontSize: '0.88rem',
+              background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+              border: 'none',
+              color: '#fff',
+              fontSize: '0.9rem',
+              fontWeight: 700,
+              marginTop: '4px',
             }}
           >
-            {t.icon}
-            {t.label}
-          </button>
-        ))}
+            修改密码
+          </motion.button>
+        </div>
       </div>
 
-      {/* 主题 */}
-      {tab === 'theme' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <p
-            style={{
-              color: 'var(--text-secondary)',
-              marginBottom: '16px',
-            }}
-          >
-            选择界面主题
-          </p>
+      <div
+        style={{
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-color)',
+          borderRadius: '16px',
+          padding: '20px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
+          <Zap size={18} style={{ color: 'var(--accent-primary)' }} />
+          <h2 style={{ fontSize: '1.05rem', margin: 0, color: 'var(--text-primary)' }}>
+            API 配置
+          </h2>
+        </div>
+
+        {loadingProfile ? (
           <div
             style={{
+              padding: '26px 0',
+              color: 'var(--text-muted)',
               display: 'flex',
-              gap: '12px',
-              flexWrap: 'wrap',
+              justifyContent: 'center',
             }}
           >
-            {THEMES.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => applyTheme(t.id)}
+            <motion.span
+              animate={{ rotate: 360 }}
+              transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+              style={{ marginRight: 8, display: 'inline-flex' }}
+            >
+              <Loader size={18} />
+            </motion.span>
+            加载中...
+          </div>
+        ) : (
+          <>
+            <div style={{ marginBottom: '14px' }}>
+              <div
                 style={{
+                  fontSize: '0.82rem',
+                  color: 'var(--text-secondary)',
+                  marginBottom: '8px',
                   display: 'flex',
-                  flexDirection: 'column',
                   alignItems: 'center',
-                  gap: '8px',
-                  padding: '16px 20px',
-                  borderRadius: '12px',
-                  cursor: 'pointer',
-                  background:
-                    currentTheme === t.id
-                      ? 'rgba(124,106,247,0.12)'
-                      : 'var(--bg-secondary)',
-                  border: `2px solid ${
-                    currentTheme === t.id
-                      ? 'var(--accent-primary)'
-                      : 'var(--border-color)'
-                  }`,
-                  transition: 'all 0.2s',
+                  gap: 8,
                 }}
               >
-                <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    background: t.preview,
-                  }}
-                />
-                <span
-                  style={{
-                    fontSize: '0.82rem',
-                    color: 'var(--text-secondary)',
-                  }}
-                >
-                  {t.name}
-                </span>
-                {currentTheme === t.id && (
-                  <Check
-                    size={14}
-                    style={{ color: 'var(--accent-primary)' }}
-                  />
-                )}
-              </button>
-            ))}
-          </div>
-        </motion.div>
-      )}
-
-      {/* API 配置 */}
-      {tab === 'api' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '16px',
-            }}
-          >
-            <p style={{ color: 'var(--text-secondary)' }}>
-              管理 AI 接口配置
-            </p>
-            <button
-              onClick={() => setShowAddApi(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '8px 14px',
-                borderRadius: '10px',
-                cursor: 'pointer',
-                background:
-                  'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-                border: 'none',
-                color: '#fff',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-              }}
-            >
-              <Plus size={14} /> 新增配置
-            </button>
-          </div>
-
-          {configs.length === 0 ? (
-            <div
-              style={{
-                textAlign: 'center',
-                padding: '40px',
-                color: 'var(--text-muted)',
-              }}
-            >
-              <Zap
-                size={32}
-                style={{ margin: '0 auto 12px', opacity: 0.4 }}
-              />
-              <p>暂无 API 配置，请点击新增</p>
-            </div>
-          ) : (
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '10px',
-              }}
-            >
-              {configs.map((cfg) => (
-                <div
-                  key={cfg.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '14px 18px',
-                    borderRadius: '12px',
-                    background: 'var(--bg-secondary)',
-                    border: `1px solid ${
-                      cfg.is_active
-                        ? 'var(--accent-primary)'
-                        : 'var(--border-color)'
-                    }`,
-                  }}
-                >
-                  <div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontWeight: 600,
-                          color: 'var(--text-primary)',
-                        }}
-                      >
-                        {cfg.name}
-                      </span>
-                      {cfg.is_active === 1 && (
-                        <span
-                          style={{
-                            fontSize: '0.72rem',
-                            padding: '2px 8px',
-                            borderRadius: '20px',
-                            background: 'rgba(74,222,128,0.15)',
-                            color: 'var(--success)',
-                            fontWeight: 600,
-                          }}
-                        >
-                          使用中
-                        </span>
-                      )}
-                    </div>
-                    <p
-                      style={{
-                        fontSize: '0.8rem',
-                        color: 'var(--text-muted)',
-                        marginTop: '2px',
-                      }}
-                    >
-                      {cfg.provider} · {cfg.model || '未设置模型'}
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    {cfg.is_active !== 1 && (
-                      <button
-                        onClick={() => handleActivate(cfg.id)}
-                        style={{
-                          padding: '6px 12px',
-                          borderRadius: '8px',
-                          cursor: 'pointer',
-                          background: 'transparent',
-                          border: '1px solid var(--accent-primary)',
-                          color: 'var(--accent-primary)',
-                          fontSize: '0.8rem',
-                          fontWeight: 600,
-                        }}
-                      >
-                        激活
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDeleteApi(cfg.id)}
-                      style={{
-                        padding: '6px 8px',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        background: 'transparent',
-                        border: '1px solid var(--border-color)',
-                        color: 'var(--danger)',
-                        display: 'flex',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* 新增 API 弹窗 */}
-          {showAddApi && (
-            <div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'rgba(0,0,0,0.6)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 200,
-              }}
-            >
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+                <Server size={14} />
+                OpenAI-compatible 服务
+              </div>
+              <div
                 style={{
-                  background: 'var(--bg-secondary)',
-                  borderRadius: '16px',
-                  border: '1px solid var(--border-color)',
-                  padding: '28px',
-                  width: '100%',
-                  maxWidth: '440px',
-                  margin: '0 16px',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+                  gap: '10px',
                 }}
               >
-                <h3
-                  style={{
-                    fontWeight: 700,
-                    color: 'var(--text-primary)',
-                    marginBottom: '20px',
-                  }}
-                >
-                  新增 API 配置
-                </h3>
-
-                {[
-                  { label: '配置名称', key: 'name', placeholder: '例：我的 GPT-4' },
-                  { label: 'API Key', key: 'apiKey', placeholder: 'sk-...' },
-                  { label: '模型名称', key: 'model', placeholder: '例：gpt-4o' },
-                  {
-                    label: 'Endpoint（可选）',
-                    key: 'endpoint',
-                    placeholder: 'https://api.openai.com/v1',
-                  },
-                ].map((field) => (
-                  <div key={field.key} style={{ marginBottom: '14px' }}>
-                    <label
+                {providers.map((p) => {
+                  const isSelected = selectedProviderId === p.id
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleSelectProvider(p)}
                       style={{
-                        fontSize: '0.82rem',
-                        color: 'var(--text-secondary)',
-                        display: 'block',
-                        marginBottom: '6px',
+                        padding: '12px 12px',
+                        borderRadius: '12px',
+                        cursor: 'pointer',
+                        background: isSelected ? 'rgba(16,163,127,0.12)' : 'var(--bg-tertiary)',
+                        border: `1px solid ${isSelected ? 'var(--accent-primary)' : 'var(--border-color)'}`,
+                        color: 'var(--text-primary)',
+                        textAlign: 'left',
+                        transition: 'all 0.15s ease',
                       }}
                     >
-                      {field.label}
-                    </label>
-                    <input
-                      value={apiForm[field.key as keyof typeof apiForm]}
-                      onChange={(e) =>
-                        setApiForm((prev) => ({
-                          ...prev,
-                          [field.key]: e.target.value,
-                        }))
-                      }
-                      placeholder={field.placeholder}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px',
-                        background: 'var(--bg-tertiary)',
-                        border: '1px solid var(--border-color)',
-                        borderRadius: '8px',
-                        color: 'var(--text-primary)',
-                        fontSize: '0.9rem',
-                        outline: 'none',
-                      }}
-                    />
-                  </div>
-                ))}
-
-                <div style={{ marginBottom: '20px' }}>
-                  <label
-                    style={{
-                      fontSize: '0.82rem',
-                      color: 'var(--text-secondary)',
-                      display: 'block',
-                      marginBottom: '6px',
-                    }}
-                  >
-                    Provider
-                  </label>
-                  <select
-                    value={apiForm.provider}
-                    onChange={(e) =>
-                      setApiForm((prev) => ({
-                        ...prev,
-                        provider: e.target.value,
-                      }))
-                    }
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      background: 'var(--bg-tertiary)',
-                      border: '1px solid var(--border-color)',
-                      borderRadius: '8px',
-                      color: 'var(--text-primary)',
-                      fontSize: '0.9rem',
-                      outline: 'none',
-                    }}
-                  >
-                    {PROVIDERS.map((p) => (
-                      <option key={p} value={p}>
-                        {p}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: '10px',
-                    justifyContent: 'flex-end',
-                  }}
-                >
-                  <button
-                    onClick={() => setShowAddApi(false)}
-                    style={{
-                      padding: '9px 18px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      background: 'transparent',
-                      border: '1px solid var(--border-color)',
-                      color: 'var(--text-secondary)',
-                      fontSize: '0.88rem',
-                    }}
-                  >
-                    取消
-                  </button>
-                  <button
-                    onClick={handleAddApi}
-                    style={{
-                      padding: '9px 18px',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      background:
-                        'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-                      border: 'none',
-                      color: '#fff',
-                      fontWeight: 600,
-                      fontSize: '0.88rem',
-                    }}
-                  >
-                    保存
-                  </button>
-                </div>
-              </motion.div>
+                      <div
+                        style={{
+                          fontWeight: 900,
+                          fontSize: '0.9rem',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                        }}
+                      >
+                        <span>{p.name}</span>
+                        {isSelected && <Check size={16} style={{ color: 'var(--accent-primary)' }} />}
+                      </div>
+                      <div
+                        style={{
+                          marginTop: 6,
+                          fontSize: '0.78rem',
+                          color: 'var(--text-muted)',
+                          lineHeight: 1.35,
+                        }}
+                      >
+                        {p.description}
+                      </div>
+                    </button>
+                  )
+                })}
+              </div>
             </div>
-          )}
-        </motion.div>
-      )}
 
-      {/* 安全 */}
-      {tab === 'security' && (
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          style={{ maxWidth: '380px' }}
-        >
-          <p
-            style={{
-              color: 'var(--text-secondary)',
-              marginBottom: '20px',
-            }}
-          >
-            修改登录密码
-          </p>
-          {[
-            { label: '当前密码', value: oldPwd, setter: setOldPwd },
-            { label: '新密码', value: newPwd, setter: setNewPwd },
-            { label: '确认新密码', value: confirmPwd, setter: setConfirmPwd },
-          ].map((field) => (
-            <div key={field.label} style={{ marginBottom: '14px' }}>
+            <div style={{ marginBottom: '14px' }}>
               <label
                 style={{
                   fontSize: '0.82rem',
@@ -590,118 +528,289 @@ export default function SettingsPage() {
                   marginBottom: '6px',
                 }}
               >
-                {field.label}
+                Provider
               </label>
               <input
-                type="password"
-                value={field.value}
-                onChange={(e) => field.setter(e.target.value)}
+                value={formProvider}
+                readOnly
                 style={{
                   width: '100%',
                   padding: '10px 12px',
-                  background: 'var(--bg-secondary)',
+                  background: 'var(--bg-tertiary)',
                   border: '1px solid var(--border-color)',
-                  borderRadius: '8px',
+                  borderRadius: '10px',
+                  color: 'var(--text-muted)',
+                  fontSize: '0.9rem',
+                  outline: 'none',
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '14px' }}>
+              <label
+                style={{
+                  fontSize: '0.82rem',
+                  color: 'var(--text-secondary)',
+                  display: 'block',
+                  marginBottom: '6px',
+                }}
+              >
+                Base URL
+              </label>
+              <input
+                value={formBaseUrl}
+                onChange={(e) => setFormBaseUrl(e.target.value)}
+                placeholder="https://api.openai.com/v1"
+                style={{
+                  width: '100%',
+                  padding: '10px 12px',
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: '10px',
                   color: 'var(--text-primary)',
                   fontSize: '0.9rem',
                   outline: 'none',
                 }}
               />
             </div>
-          ))}
-          {pwdMsg && (
-            <p
-              style={{
-                fontSize: '0.85rem',
-                marginBottom: '12px',
-                color: pwdMsg.includes('成功')
-                  ? 'var(--success)'
-                  : 'var(--danger)',
-              }}
-            >
-              {pwdMsg}
-            </p>
-          )}
-          <button
-            onClick={handleChangePwd}
-            style={{
-              padding: '10px 24px',
-              borderRadius: '10px',
-              cursor: 'pointer',
-              background:
-                'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-              border: 'none',
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: '0.9rem',
-            }}
-          >
-            确认修改
-          </button>
-        </motion.div>
-      )}
 
-      {/* 关于 */}
-      {tab === 'about' && (
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <div
-            style={{
-              padding: '28px',
-              borderRadius: '16px',
-              background: 'var(--bg-secondary)',
-              border: '1px solid var(--border-color)',
-            }}
-          >
-            <div
-              style={{
-                fontSize: '2rem',
-                fontWeight: 900,
-                letterSpacing: '0.3em',
-                marginBottom: '8px',
-                background:
-                  'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                display: 'inline-block',
-              }}
-            >
-              SIDE
+            <div style={{ marginBottom: '14px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+                <label style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>API Key</label>
+                {showApiKeyOptionalTag && (
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                    （已保存，留空则不更新）
+                  </span>
+                )}
+              </div>
+              <div style={{ position: 'relative', marginTop: '6px' }}>
+                <input
+                  type={showApiKeyOptionalTag ? 'password' : 'text'}
+                  value={formApiKey}
+                  onChange={(e) => setFormApiKey(e.target.value)}
+                  placeholder={showApiKeyOptionalTag ? '********' : 'sk-...'}
+                  style={{
+                    width: '100%',
+                    padding: '10px 44px 10px 12px',
+                    background: 'var(--bg-tertiary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '10px',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.9rem',
+                    outline: 'none',
+                  }}
+                />
+              </div>
             </div>
-            <p
-              style={{
-                color: 'var(--text-muted)',
-                fontSize: '0.82rem',
-                marginBottom: '16px',
-              }}
-            >
-              v1.0.0
-            </p>
-            <p
-              style={{
-                color: 'var(--text-secondary)',
-                fontSize: '0.9rem',
-                lineHeight: 1.7,
-                marginBottom: '16px',
-              }}
-            >
-              SIDE 是一个现代化、独立运行的 AI 对话前端，兼容 SillyTavern 数据格式，
-              致力于提供更干净的代码架构和更沉浸的对话体验。
-            </p>
-            <a
-              href="https://github.com"
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                color: 'var(--accent-primary)',
-                fontSize: '0.88rem',
-                textDecoration: 'none',
-              }}
-            >
-              GitHub 仓库 →
-            </a>
-          </div>
-        </motion.div>
-      )}
+
+            <div style={{ marginBottom: '14px', position: 'relative' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 10, alignItems: 'start' }}>
+                <div>
+                  <label
+                    style={{
+                      fontSize: '0.82rem',
+                      color: 'var(--text-secondary)',
+                      display: 'block',
+                      marginBottom: '6px',
+                    }}
+                  >
+                    默认模型
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      value={formDefaultModel}
+                      onFocus={() => {
+                        if (modelList.length > 0) setShowModelDropdown(true)
+                      }}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        setFormDefaultModel(v)
+                        setModelSearchText(v)
+                        if (modelList.length > 0 && v.trim()) setShowModelDropdown(true)
+                        if (!v.trim()) setShowModelDropdown(false)
+                      }}
+                      placeholder="输入默认模型"
+                      style={{
+                        width: '100%',
+                        padding: '10px 44px 10px 12px',
+                        background: 'var(--bg-tertiary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '10px',
+                        color: 'var(--text-primary)',
+                        fontSize: '0.9rem',
+                        outline: 'none',
+                      }}
+                    />
+                    <div
+                      style={{
+                        position: 'absolute',
+                        top: '50%',
+                        right: 12,
+                        transform: 'translateY(-50%)',
+                        color: 'var(--text-muted)',
+                      }}
+                    >
+                      <Search size={16} />
+                    </div>
+                  </div>
+
+                  {showModelDropdown && modelList.length > 0 && (
+                    <div
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        top: '100%',
+                        marginTop: 8,
+                        zIndex: 100,
+                        background: 'var(--bg-secondary)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: '10px',
+                        maxHeight: 240,
+                        overflowY: 'auto',
+                        boxShadow: '0 10px 30px rgba(0,0,0,0.18)',
+                      }}
+                    >
+                      {filteredModelList.length === 0 ? (
+                        <div style={{ padding: '12px', color: 'var(--text-muted)' }}>没有匹配项</div>
+                      ) : (
+                        filteredModelList.map((m) => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => {
+                              setFormDefaultModel(m)
+                              setModelSearchText(m)
+                              setShowModelDropdown(false)
+                            }}
+                            style={{
+                              width: '100%',
+                              textAlign: 'left',
+                              padding: '10px 12px',
+                              border: 'none',
+                              background: 'transparent',
+                              cursor: 'pointer',
+                              color: 'var(--text-primary)',
+                              fontWeight: 700,
+                              fontSize: '0.88rem',
+                              borderBottom: '1px solid rgba(255,255,255,0.06)',
+                            }}
+                          >
+                            {m}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ paddingTop: 22 }}>
+                  <motion.button
+                    type="button"
+                    onClick={handleFetchModelList}
+                    whileTap={{ scale: 0.98 }}
+                    disabled={modelsLoading}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: '10px',
+                      cursor: modelsLoading ? 'not-allowed' : 'pointer',
+                      background: 'linear-gradient(135deg, rgba(66,133,244,0.95), rgba(16,163,127,0.95))',
+                      border: 'none',
+                      color: '#fff',
+                      fontSize: '0.9rem',
+                      fontWeight: 800,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {modelsLoading ? (
+                      <motion.span
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+                      >
+                        <Loader size={18} />
+                      </motion.span>
+                    ) : (
+                      '获取模型列表'
+                    )}
+                  </motion.button>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '14px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                <input
+                  type="checkbox"
+                  checked={formEnabled}
+                  onChange={(e) => setFormEnabled(e.target.checked)}
+                />
+                启用该 API 配置
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <motion.button
+                type="button"
+                onClick={handleTestConnection}
+                whileTap={{ scale: 0.98 }}
+                disabled={testLoading}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: '10px',
+                  cursor: testLoading ? 'not-allowed' : 'pointer',
+                  background: 'var(--bg-tertiary)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-primary)',
+                  fontSize: '0.9rem',
+                  fontWeight: 800,
+                }}
+              >
+                {testLoading ? '测试中...' : '测试连接'}
+              </motion.button>
+
+              <motion.button
+                type="button"
+                onClick={handleSave}
+                whileTap={{ scale: 0.98 }}
+                disabled={saveLoading}
+                style={{
+                  padding: '10px 18px',
+                  borderRadius: '10px',
+                  cursor: saveLoading ? 'not-allowed' : 'pointer',
+                  background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                  border: 'none',
+                  color: '#fff',
+                  fontSize: '0.9rem',
+                  fontWeight: 800,
+                }}
+              >
+                {saveLoading ? '保存中...' : '保存'}
+              </motion.button>
+            </div>
+
+            <div style={{ marginTop: 12, display: 'grid', gap: 6 }}>
+              {saveMsg && (
+                <div style={{ color: saveMsg.type === 'success' ? 'var(--success)' : 'var(--danger)', fontSize: '0.85rem' }}>
+                  {saveMsg.text}
+                </div>
+              )}
+              {testMsg && (
+                <div style={{ color: testMsg.type === 'success' ? 'var(--success)' : 'var(--danger)', fontSize: '0.85rem' }}>
+                  {testMsg.text}
+                </div>
+              )}
+              {modelsMsg && (
+                <div style={{ color: modelsMsg.type === 'success' ? 'var(--success)' : 'var(--danger)', fontSize: '0.85rem' }}>
+                  {modelsMsg.text}
+                </div>
+              )}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

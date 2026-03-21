@@ -1,12 +1,14 @@
 import { Outlet, useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Users, BookOpen, Sliders, Settings, LogOut } from 'lucide-react'
+import { Users, BookOpen, Sliders, Settings, LogOut, Sparkles, FileText } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
+import { BottomNav } from './BottomNav'
 
 const navItems = [
   { icon: Users, label: '角色', path: '/characters' },
   { icon: BookOpen, label: '世界书', path: '/worlds' },
-  { icon: Sliders, label: '预设', path: '/settings' },
+  { icon: Sliders, label: '预设', path: '/presets' },
+  { icon: FileText, label: 'Regex', path: '/regex' },
   { icon: Settings, label: '设置', path: '/settings' },
 ]
 
@@ -21,188 +23,104 @@ export function MainLayout() {
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        width: '100vw',
-        height: '100vh',
-        background: 'var(--bg-primary)',
-      }}
-    >
-      {/* 左侧导航栏（桌面端） */}
+    <div className="flex w-screen h-screen" style={{ background: 'var(--bg-primary)' }}>
       <motion.aside
-        initial={{ x: -260 }}
+        initial={{ x: -280 }}
         animate={{ x: 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        className="hidden md:flex flex-col w-[260px] h-screen flex-shrink-0 p-6"
         style={{
-          width: '260px',
-          flexShrink: 0,
-          height: '100vh',
           background: 'var(--bg-secondary)',
           borderRight: '1px solid var(--border-color)',
-          display: 'flex',
-          flexDirection: 'column',
-          padding: '24px 0',
         }}
-        className="hidden md:flex"
       >
-        {/* Logo */}
-        <div
-          style={{
-            padding: '0 24px 24px',
-            borderBottom: '1px solid var(--border-color)',
-          }}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="pb-6 mb-6 border-b"
+          style={{ borderColor: 'var(--border-color)' }}
         >
-          <div
-            style={{
-              fontSize: '1.6rem',
-              fontWeight: 900,
-              letterSpacing: '0.3em',
-              background:
-                'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            SIDE
-          </div>
-          <div
-            style={{
-              color: 'var(--text-muted)',
-              fontSize: '0.75rem',
-              marginTop: '4px',
-            }}
-          >
-            沉浸式 AI 对话
-          </div>
-        </div>
-
-        {/* 导航项 */}
-        <nav style={{ flex: 1, padding: '16px 12px' }}>
-          {navItems.map((item) => {
-            const active = location.pathname.startsWith(item.path)
-            return (
-              <motion.button
-                key={item.path + item.label}
-                onClick={() => navigate(item.path)}
-                whileHover={{ x: 4 }}
-                whileTap={{ scale: 0.97 }}
+          <div className="flex items-center gap-3">
+            <motion.div
+              animate={{ rotate: [0, 10, -10, 0] }}
+              transition={{ duration: 4, repeat: Infinity, repeatDelay: 5 }}
+            >
+              <Sparkles size={28} style={{ color: 'var(--accent-primary)' }} />
+            </motion.div>
+            <div>
+              <div
+                className="text-2xl font-black tracking-[0.2em]"
                 style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '12px',
-                  padding: '11px 14px',
-                  borderRadius: '10px',
-                  marginBottom: '4px',
-                  background: active
-                    ? 'rgba(124,106,247,0.12)'
-                    : 'transparent',
-                  border: active
-                    ? '1px solid rgba(124,106,247,0.2)'
-                    : '1px solid transparent',
-                  color: active
-                    ? 'var(--accent-primary)'
-                    : 'var(--text-secondary)',
-                  cursor: 'pointer',
-                  fontWeight: active ? 600 : 400,
-                  fontSize: '0.9rem',
-                  textAlign: 'left',
-                  transition: 'all 0.2s',
+                  background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
                 }}
               >
-                <item.icon size={18} />
-                {item.label}
+                SIDE
+              </div>
+              <div className="text-xs mt-0.5 tracking-wide" style={{ color: 'var(--text-muted)' }}>
+                沉浸式 AI 对话
+              </div>
+            </div>
+          </div>
+        </motion.div>
+
+        <nav className="flex-1 space-y-1">
+          {navItems.map((item, index) => {
+            const Icon = item.icon
+            const isActive = location.pathname.startsWith(item.path)
+            return (
+              <motion.button
+                key={item.path}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 + index * 0.05 }}
+                whileHover={{ x: 4 }}
+                onClick={() => navigate(item.path)}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 relative"
+                style={{
+                  color: isActive ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                  background: isActive ? 'var(--accent-primary)/10' : 'transparent',
+                }}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="sidebar-active"
+                    className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-full"
+                    style={{ background: 'var(--accent-primary)' }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                  />
+                )}
+                <Icon size={18} />
+                <span>{item.label}</span>
               </motion.button>
             )
           })}
         </nav>
 
-        {/* 底部退出 */}
-        <div style={{ padding: '0 12px' }}>
-          <motion.button
-            onClick={handleLogout}
-            whileHover={{ x: 4 }}
-            whileTap={{ scale: 0.97 }}
-            style={{
-              width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              padding: '11px 14px',
-              borderRadius: '10px',
-              background: 'transparent',
-              border: '1px solid transparent',
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              fontSize: '0.9rem',
-              textAlign: 'left',
-              transition: 'all 0.2s',
-            }}
-          >
-            <LogOut size={18} />
-            退出登录
-          </motion.button>
-        </div>
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.4 }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleLogout}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors"
+          style={{ color: 'var(--text-muted)' }}
+        >
+          <LogOut size={18} />
+          <span>退出登录</span>
+        </motion.button>
       </motion.aside>
 
-      {/* 主内容区 */}
-      <main
-        style={{
-          flex: 1,
-          height: '100vh',
-          overflowY: 'auto',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        <Outlet />
+      <main className="flex-1 h-screen overflow-hidden relative">
+        <div className="h-full overflow-y-auto pb-20 md:pb-0">
+          <Outlet />
+        </div>
       </main>
 
-      {/* 底部导航（移动端） */}
-      <nav
-        className="flex md:hidden"
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          left: 0,
-          right: 0,
-          background: 'var(--bg-secondary)',
-          borderTop: '1px solid var(--border-color)',
-          display: 'flex',
-          justifyContent: 'space-around',
-          padding: '8px 0 calc(8px + env(safe-area-inset-bottom))',
-          zIndex: 100,
-        }}
-      >
-        {navItems.map((item) => {
-          const active = location.pathname.startsWith(item.path)
-          return (
-            <button
-              key={item.path + item.label}
-              onClick={() => navigate(item.path)}
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '4px',
-                padding: '4px 16px',
-                background: 'none',
-                border: 'none',
-                color: active
-                  ? 'var(--accent-primary)'
-                  : 'var(--text-muted)',
-                cursor: 'pointer',
-                fontSize: '0.7rem',
-                fontWeight: active ? 600 : 400,
-              }}
-            >
-              <item.icon size={active ? 22 : 20} />
-              {item.label}
-            </button>
-          )
-        })}
-      </nav>
+      <BottomNav />
     </div>
   )
 }
